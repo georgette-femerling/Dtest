@@ -1,0 +1,13 @@
+Metadata-Version: 2.1
+Name: Dtest
+Version: 0.1.0
+Summary: A command-line tool wrapper for moments.LD to test demographic models.
+Home-page: https://github.com/georgette-femerling/
+Author: Georgette Femerling
+Author-email: maria.femerling@mail.mcgill.com
+Project-URL: Bug Tracker, https://github.com/georgette-femerling//issues
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
