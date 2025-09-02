@@ -21,7 +21,7 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    packages=setuptools.find_packages(include=['Dtest']),
+    packages=setuptools.find_packages(include=['Dtest','Dtest.model','Dtest.get_LD']),
     python_requires=">=3.6",
     entry_points={"console_scripts": ["dtest = Dtest.cli:main",]}
 )
