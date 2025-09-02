@@ -14,7 +14,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/georgette-femerling/",
     project_urls={
-        "Bug Tracker": "https://github.com/georgette-femerling//issues",
+        "Bug Tracker": "https://github.com/georgette-femerling/Dtest/issues",
     },
     classifiers=[
         "Programming Language :: Python :: 3",
