@@ -23,7 +23,7 @@ def sample_timepoints(graph,anc_end_time=1000000):
         for epoch in deme.epochs:
             start = (epoch.start_time if epoch.start_time != float('inf') else anc_end_time)
             midway = (start + epoch.end_time)/2
-            time.extend([start-1, midway, epoch.end_time])
+            time.extend([start-2, midway, epoch.end_time])
         times = np.concatenate([times,time])
         times_dic[deme.name] = time
     return np.unique(np.flip(times)),times_dic

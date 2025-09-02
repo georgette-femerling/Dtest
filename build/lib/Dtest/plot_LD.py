@@ -2,6 +2,13 @@
 import matplotlib.pylab as plt
 import numpy as np
 
+FONT_SETTINGS = {
+    'xtick.labelsize': 7,
+    'ytick.labelsize': 7,
+    'font.size': 8,
+    'font.style': 'normal'
+}
+
 def plot_iicr(iirc,T): 
     plt.step(T, iirc)
     plt.xticks(fontsize= 12)
@@ -37,7 +44,7 @@ def plot_comparison(LDpop1,LDpop2,labels=["Original","Size Change"],color="blue"
 
     plt.tight_layout()
     if save:
-        plt.savefig(str(labels[0])+".Dstats.jpg",format='jpg',transparent = False)
+        plt.savefig(str(labels[0])+".Dstats.png",format='png',transparent = False,dpi=150)
     else:
         plt.show()
    
@@ -112,6 +119,249 @@ def plot_LD_Linear(LD_sigma, times_dic, ancestral, rhos = np.logspace(-2, 2, 21)
         plt.savefig(plot_file,format='pdf',transparent = False)
 
 ## From moments.LD.plot - modified
+def plot_ld_data(
+    ms,
+    vcs,
+    stats_to_plot=[],
+    rows=None,
+    cols=None,
+    statistics=[["DD_0_0","Dz_0_0_0",'pi2_0_0_0_0']],
+    fig_size=(6, 6),
+    dpi=150,
+    rs=None,
+    numfig=1,
+    cM=False,
+    output=None,
+    show=False,
+    plot_means=True,
+    plot_vcs=False,
+    binned_data=True,
+    ax=None,
+    labels=None,
+    color=None
+):
+    # Check that all the data has the correct dimensions
+    if binned_data and (len(ms[:-1]) != len(rs) - 1):
+        raise ValueError("binned_data True, but incorrect length for given rs.")
+    if (binned_data == False) and (len(ms) != len(rs)):
+        raise ValueError("binned_data False, incorrect length for given rs.")
+
+    if labels is not None:
+        assert len(labels) == len(stats_to_plot)
+    if labels is None:
+        labels = stats_to_plot
+
+
+    # set up fig and axes
+    if ax is None:
+        num_axes = len(stats_to_plot)
+        if num_axes == 0:
+            return
+
+        if rows == None and cols == None:
+            cols = len(stats_to_plot)
+            rows = 1
+        elif cols == None:
+            cols = int(np.ceil(len(stats_to_plot) / rows))
+        elif rows == None:
+            rows = int(np.ceil(len(stats_to_plot) / cols))
+
+
+        fig = plt.figure(numfig, figsize=fig_size, dpi=dpi)
+        fig.clf()
+        axes = {}
+
+        for i, stats in enumerate(stats_to_plot):
+            axes[i] = plt.subplot(rows, cols, i + 1)
+
+    else:
+        axes = [ax]
+
+    # if statistics == None:
+    #     statistics = ld_stats.names()
+
+    # make sure all stats are named properly
+    rs = np.array(rs)
+    if binned_data:
+        rs_to_plot = np.array((rs[:-1] + rs[1:]) / 2)
+    else:
+        rs_to_plot = rs
+
+
+    x_label = "$r$"
+    if cM == True:
+        rs_to_plot *= 100
+        x_label = "cM"
+
+
+    # loop through stats_to_plot, update axis, and plot
+    for i, (stats, label) in enumerate(zip(stats_to_plot, labels)):
+        # we don't want to plot log-scale if we predict negative values for stats
+        neg_vals = False
+
+
+        axes[i].set_prop_cycle(color=color)
+        if plot_vcs:
+            for stat in stats:
+                k = statistics[0].index(stat)
+                data_to_plot = np.array([ms[j][k] for j in range(len(rs_to_plot))])
+                data_error = np.array(
+                    [vcs[j][k][k] ** 0.5 * 1.96 for j in range(len(rs_to_plot))]
+                )
+                axes[i].fill_between(
+                    rs_to_plot,
+                    data_to_plot - data_error,
+                    data_to_plot + data_error,
+                    alpha=0.25,
+                    label=None,
+                )
+
+        if plot_means:
+            for ind, stat in enumerate(stats):
+                k = statistics[0].index(stat)
+                data_to_plot = np.array([ms[j][k] for j in range(len(rs_to_plot))])
+                axes[i].plot(rs_to_plot, data_to_plot, "--", label=label[ind])
+
+        # for ind, stat in enumerate(stats):
+        #     k = statistics[0].index(stat)
+        #     exp_to_plot = [ld_stats[j][k] for j in range(len(rs_to_plot))]
+        #     if np.any([e < 0 for e in exp_to_plot]):
+        #         neg_vals = True
+        #     axes[i].plot(rs_to_plot, exp_to_plot, label=label[ind])
+
+
+        axes[i].set_xscale("log")
+        # don't log scale y axis for pi stats
+        for stat in stats:
+            if not (stat.startswith("pi2") or neg_vals):
+                axes[i].set_yscale("log")
+
+
+        # only place x labels at bottom of columns
+        if i >= len(stats_to_plot) - cols:
+            axes[i].set_xlabel(x_label)
+        axes[i].legend(frameon=False, fontsize=8)
+        # only place y labels on left-most column
+        if i % cols == 0:
+            axes[i].set_ylabel("Statistic")
+
+
+    if ax is None:
+        with plt.rc_context(FONT_SETTINGS):
+            fig.tight_layout()
+            if output != None:
+                plt.savefig(output)
+            if show == True:
+                fig.show()
+            else:
+                return fig
+
+def plot_ld_curves(
+    ld_stats,
+    stats_to_plot=[],
+    rows=None,
+    cols=None,
+    statistics=None,
+    fig_size=(6, 6),
+    dpi=150,
+    rs=None,
+    numfig=1,
+    cM=False,
+    output=None,
+    show=False,
+    binned_data=True,
+    ax=None,
+    labels=None,
+    color=None
+):
+    # Check that all the data has the correct dimensions
+    if binned_data and (len(ld_stats.LD()) != len(rs) - 1):
+        raise ValueError("binned_data True, but incorrect length for given rs.")
+    if (binned_data == False) and (len(ld_stats.LD()) != len(rs)):
+        raise ValueError("binned_data False, incorrect length for given rs.")
+
+    if labels is not None:
+        assert len(labels) == len(stats_to_plot)
+    if labels is None:
+        labels = stats_to_plot
+
+    # set up fig and axes
+    if ax is None:
+        num_axes = len(stats_to_plot)
+        if num_axes == 0:
+            return
+
+        if rows == None and cols == None:
+            cols = len(stats_to_plot)
+            rows = 1
+        elif cols == None:
+            cols = int(np.ceil(len(stats_to_plot) / rows))
+        elif rows == None:
+            rows = int(np.ceil(len(stats_to_plot) / cols))
+
+        fig = plt.figure(numfig, figsize=fig_size, dpi=dpi)
+        fig.clf()
+        axes = {}
+
+        for i, stats in enumerate(stats_to_plot):
+            axes[i] = plt.subplot(rows, cols, i + 1)
+
+    else:
+        axes = [ax]
+
+    if statistics == None:
+        statistics = ld_stats.names()
+
+    # make sure all stats are named properly
+    rs = np.array(rs)
+    if binned_data:
+        rs_to_plot = np.array((rs[:-1] + rs[1:]) / 2)
+    else:
+        rs_to_plot = rs
+
+    x_label = "$r$"
+    if cM == True:
+        rs_to_plot *= 100
+        x_label = "cM"
+
+    # loop through stats_to_plot, update axis, and plot
+    for i, (stats, label) in enumerate(zip(stats_to_plot, labels)):
+        # we don't want to plot log-scale if we predict negative values for stats
+        neg_vals = False
+
+        axes[i].set_prop_cycle(color=color)
+
+        for ind, stat in enumerate(stats):
+            k = statistics[0].index(stat)
+            exp_to_plot = [ld_stats[j][k] for j in range(len(rs_to_plot))]
+            if np.any([e < 0 for e in exp_to_plot]):
+                neg_vals = True
+            axes[i].plot(rs_to_plot, exp_to_plot, label=label[ind])
+
+        axes[i].set_xscale("log")
+        # don't log scale y axis for pi stats
+        for stat in stats:
+            if not (stat.startswith("pi2") or neg_vals):
+                axes[i].set_yscale("log")
+
+        # only place x labels at bottom of columns
+        if i >= len(stats_to_plot) - cols:
+            axes[i].set_xlabel(x_label)
+        axes[i].legend(frameon=False, fontsize=8)
+        # only place y labels on left-most column
+        if i % cols == 0:
+            axes[i].set_ylabel("Statistic")
+
+    if ax is None:
+        with plt.rc_context(FONT_SETTINGS):
+            fig.tight_layout()
+            if output != None:
+                plt.savefig(output)
+            if show == True:
+                fig.show()
+            else:
+                return fig
+            
 def plot_ld_curves_comp(
     ld_stats,
     ms,
@@ -246,7 +496,7 @@ def plot_ld_curves_comp(
 
 
     if ax is None:
-        with matplotlib.rc_context(FONT_SETTINGS):
+        with plt.rc_context(FONT_SETTINGS):
             fig.tight_layout()
             if output != None:
                 plt.savefig(output)

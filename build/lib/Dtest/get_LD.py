@@ -1,17 +1,18 @@
 # Import libraries
 import moments, moments.LD
 import numpy as np
+import demes
 from collections import defaultdict
 import scipy.stats as stats
 
 
-def get_LD(graph,r_bins,normalize = True, norm_pop_idx = 0,sample_times = None,sampled_demes=None):
+def get_LD(graph,r_bins,u = 1.25e-8, normalize = True, norm_pop_idx = 0, sample_times = None, sampled_demes = None):
      '''Calculates LD per alive deme/population normalizing by itself given a demes demographic model'''
      LD_dictionary = defaultdict(list)
      if sampled_demes is None:
           alive = [deme.name for deme in graph.demes if deme.end_time == 0 ]
           sampled_demes=alive
-     print("sampling from demes:" + ",".join(sampled_demes))
+     #print("sampling from demes:" + ",".join(sampled_demes))
      if sample_times is None:
           sample_times = np.zeros(len(sampled_demes))
 
@@ -19,9 +20,9 @@ def get_LD(graph,r_bins,normalize = True, norm_pop_idx = 0,sample_times = None,s
      # rhos = 4 * ancestral.epochs[0].start_size * np.array(r_bins)
      # print(ancestral.epochs[0].start_size)
      
-     for deme in sampled_demes:
+     for i,deme in enumerate(sampled_demes):
           
-          y = moments.Demes.LD(graph, sampled_demes=[deme], r=r_bins, sample_times=sample_times)
+          y = moments.Demes.LD(graph, sampled_demes=[deme], r=r_bins, sample_times=[sample_times[i]],u=u)
         
           # stats are computed at the bin edges - average to get midpoint estimates
           y = moments.LD.LDstats(
@@ -58,6 +59,17 @@ def Dstat_sliced(graph,sampled_demes,r_bins,normalize = True, norm_pop_idx = 0,s
           sigma = y
      return sigma
 
+## Stats signal 
+def slice_timepoints(g,time_points,yaml_filename=None):
+    sliced_dict = defaultdict()
+    for time in time_points:
+        slicedg = moments.Demes.DemesUtil.slice(g, time)
+        sliced_dict[time] = slicedg
+        # option to save to yaml
+        if yaml_filename != None:
+            demes.dump(slicedg, yaml_filename+"_"+str(int(time))+".tmp", format='yaml', simplified=True)
+    
+    return sliced_dict
 
 def get_LD_from_sliced_demes(sliced_dict,r_bins,normalize = True):
     LD_dictionary = defaultdict(list)
@@ -74,35 +86,31 @@ def get_LD_from_sliced_demes(sliced_dict,r_bins,normalize = True):
             LD_dictionary[deme].append(sigmapop)
     return sigma,LD_dictionary
 
-def LD_signal(x,y):
-     signal = defaultdict()
-     signal['d2'] = calculate_signal(x[:,0],y[:,0])
-     signal['dz'] = calculate_signal(x[:,1],y[:,1])
-     return signal
-
-def calculate_signal(LD1,LD2):
-    '''Calculates the Mean log difference between the two LD decay arrays'''
-    log_diff = np.diff(np.log(LD1) - np.log(LD2)) # calculate difference
-    mld = np.mean(log_diff)
-    return mld
+def calculate_signal(data_means,model,absolute=True):
+    '''Calculates the Mean of the absolute log differences between the two LD decay arrays'''
+    LD1=data_means
+    LD2=model
+    log_diff = np.log(LD1) - np.log(LD2) # calculate difference
+    if absolute:
+        log_diff = np.abs(log_diff)
+    mld = np.mean(log_diff,axis=0)
+    return mld #,np.abs(log_diff)
 
 def calculate_signal_Dz(LDpop1,LDpop2):
     '''Calculates the Mean log difference between the two decays of D2'''
     x = LDpop1[:,1]
     y = LDpop2[:,1]
-    log_diff = np.diff(np.log(x) - np.log(y)) # calculate difference
-    mld = np.mean(log_diff)
+    log_diff = np.log(x) - np.log(y) # calculate difference
+    mld = np.mean(np.abs(log_diff))
     return mld
 
 def calculate_signal_D2(LDpop1,LDpop2):
     '''Calculates the Mean log difference between the two decays of D2'''
     x = LDpop1[:,0]
     y = LDpop2[:,0]
-    log_diff = np.diff(np.log(x) - np.log(y)) # calculate difference
-    mld = np.mean(log_diff)
+    log_diff = np.log(x) - np.log(y) # calculate difference
+    mld = np.mean(np.abs(log_diff))
     return mld
-
-## Stats signal 
 
 def chi2_test(obs,exp,varcovs):
     '''Tests the overall significance between expected and observed values correcting by the variance of the observed data.
@@ -110,7 +118,7 @@ def chi2_test(obs,exp,varcovs):
     Returns a tuple of sum(X2) and p_value'''
     chi_square = np.sum(np.square(obs - exp)/[ np.diagonal(b) for b in varcovs ],axis=0)
     p_value = 1 - stats.chi2.cdf(chi_square, (len(obs)-1))
-    return(chi_square,p_value)
+    return(chi_square,chi_square/(len(obs)-1),p_value)
 
 def chi2_test_perbin(obs,exp,varcovs):
     '''Tests the significance between expected and observed values correcting by the variance of the observed data.
@@ -119,7 +127,7 @@ def chi2_test_perbin(obs,exp,varcovs):
     p_value = 1 - stats.chi2.cdf(chi_square, 1)
     return(chi_square,p_value)
 
-## LD from VCF
+# LD from VCF
 # pops = ["pop_A", "pop_B"]
 # ld_stats = moments.LD.Parsing.compute_ld_statistics(
 #     vcf_path,

@@ -12,7 +12,7 @@ setuptools.setup(
                 "to test demographic models."),
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/georgette-femerling/",
+    url="https://github.com/georgette-femerling/Dtest",
     project_urls={
         "Bug Tracker": "https://github.com/georgette-femerling/Dtest/issues",
     },
@@ -21,7 +21,7 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    packages=setuptools.find_packages(include=['Dtest','Dtest.model','Dtest.get_LD']),
+    packages=setuptools.find_packages(include=['Dtest']),
     python_requires=">=3.6",
     entry_points={"console_scripts": ["dtest = Dtest.cli:main",]}
 )
